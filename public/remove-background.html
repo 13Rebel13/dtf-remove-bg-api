@@ -1,77 +1,82 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <title>Test Remove Background</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 40px;
-    }
-    img {
-      max-width: 300px;
-      margin: 10px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px #ccc;
-    }
-  </style>
-</head>
-<body>
-  <h1>Test de suppression d’arrière-plan (PhotoRoom)</h1>
-  <form id="uploadForm" enctype="multipart/form-data">
-    <input type="file" name="image" id="imageInput" accept="image/*" required><br><br>
-    <button type="submit">Envoyer</button>
-  </form>
+const express = require('express');
+const multer = require('multer');
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+const Outseta = require('@outseta/sdk');
+require('dotenv').config();
 
-  <div id="preview">
-    <h3>Image originale :</h3>
-    <img id="originalImage" src="#" alt="Image d’origine" style="display:none;">
-  </div>
+const app = express();
+const upload = multer({ dest: 'uploads/' });
 
-  <div id="result">
-    <h3>Image traitée :</h3>
-    <img id="resultImage" src="#" alt="Image traitée" style="display:none;">
-  </div>
+const outseta = new Outseta({
+  subdomain: 'dtfswiss',
+  apiKey: process.env.OUTSETA_API_KEY,
+  secret: process.env.OUTSETA_API_SECRET,
+});
 
-  <script>
-    const form = document.getElementById('uploadForm');
-    const originalImage = document.getElementById('originalImage');
-    const resultImage = document.getElementById('resultImage');
-    const imageInput = document.getElementById('imageInput');
+// Sécurité minimale
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', "default-src *; style-src * 'unsafe-inline'; script-src * 'unsafe-inline'; img-src * data: blob:;");
+  next();
+});
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+// Accès statique aux fichiers publics
+app.use(express.static(path.join(__dirname, 'public')));
 
-      const file = imageInput.files[0];
-      if (!file) return;
+// Affiche la page de test
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'remove-background.html'));
+});
 
-      // Afficher l’image originale
-      originalImage.src = URL.createObjectURL(file);
-      originalImage.style.display = 'block';
+// Traitement + décrémentation de crédits
+app.post('/api/remove-bg', upload.single('image'), async (req, res) => {
+  try {
+    const imagePath = req.file.path;
+    const apiKey = process.env.PHOTOROOM_API_KEY;
+    const image = fs.readFileSync(imagePath);
 
-      const formData = new FormData();
-      formData.append('image', file);
-
-      try {
-        const res = await fetch('/api/remove-bg', {
-          method: 'POST',
-          body: formData
-        });
-
-        if (!res.ok) throw new Error('Échec traitement');
-
-        const blob = await res.blob();
-        const imgURL = URL.createObjectURL(blob);
-
-        resultImage.src = imgURL;
-        resultImage.style.display = 'block';
-
-      } catch (err) {
-        alert("Erreur pendant le traitement de l'image.");
-        console.error(err);
-      }
+    const response = await axios({
+      method: 'post',
+      url: 'https://sdk.photoroom.com/v1/segment',
+      headers: {
+        'x-api-key': apiKey,
+        'Content-Type': 'application/octet-stream'
+      },
+      data: image,
+      responseType: 'arraybuffer'
     });
-  </script>
-</body>
-</html>
+
+    fs.unlinkSync(imagePath); // Supprime image temporaire
+
+    // 🔐 Décrémenter 1 crédit utilisateur
+    const userEmail = req.headers['x-user-email'];
+    if (!userEmail) {
+      return res.status(400).json({ error: 'Aucun email utilisateur transmis' });
+    }
+
+    const user = await outseta.people.getByEmail(userEmail);
+    const currentCredits = user.data.Crédits || 0;
+
+    if (currentCredits > 0) {
+      await outseta.people.update(user.data.Uid, {
+        Crédits: currentCredits - 1
+      });
+    } else {
+      return res.status(403).json({ error: 'Pas assez de crédits' });
+    }
+
+    res.set('Content-Type', 'image/png');
+    res.send(response.data);
+
+  } catch (error) {
+    console.error('Erreur complète :', error); // ✅ Log complet visible sur Render
+    res.status(500).json({ error: 'Erreur de traitement' });
+  }
+});
+
+// Démarrage du serveur
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+  console.log(`Serveur API remove-bg en ligne sur le port ${PORT}`);
+});
