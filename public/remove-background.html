@@ -26,7 +26,7 @@
 
       const blob = await res.blob();
       const imgURL = URL.createObjectURL(blob);
-      document.getElementById('result').innerHTML = `<h3>Image traitée :</h3><img src="${imgURL}" style="max-width: 400px;">`;
+      document.getElementById('result').innerHTML = `<h3>Image traitée :</h3><img src=\"${imgURL}\" style=\"max-width: 400px;\">`;
     });
   </script>
 </body>
