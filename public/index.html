@@ -4,40 +4,33 @@
   <meta charset="UTF-8">
   <title>Test suppression arrière-plan (Render)</title>
 </head>
-<body style="font-family: sans-serif; text-align: center; padding: 60px;">
+<body style="text-align:center; font-family:sans-serif;">
   <h1>Test suppression arrière-plan (Render)</h1>
-  <input type="file" id="imageInput" accept="image/*"><br><br>
-  <button onclick="removeBackground()">Supprimer le fond</button>
-  <div id="result" style="margin-top: 40px;"></div>
+  <form id="uploadForm" enctype="multipart/form-data">
+    <input type="file" name="image" required><br><br>
+    <button type="submit">Supprimer le fond</button>
+  </form>
+  <div id="result" style="margin-top:20px;"></div>
 
   <script>
-    async function removeBackground() {
-      const input = document.getElementById('imageInput');
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const res = await fetch('/api/remove-bg', {
+        method: 'POST',
+        body: formData
+      });
+
       const result = document.getElementById('result');
-      result.innerHTML = '⏳ Traitement en cours...';
-
-      const formData = new FormData();
-      formData.append('image_file', input.files[0]);
-
-      try {
-        const response = await fetch('/api/remove-bg', {
-          method: 'POST',
-          body: formData
-        });
-
-        if (!response.ok) throw new Error("Échec traitement");
-
-        const blob = await response.blob();
+      if (res.ok) {
+        const blob = await res.blob();
         const url = URL.createObjectURL(blob);
-        result.innerHTML = `
-          <img src="${url}" alt="Image sans fond" style="max-width: 400px; border: 1px solid #ccc;"><br><br>
-          <a href="${url}" download="image_sans_fond.png">📥 Télécharger</a>
-        `;
-      } catch (e) {
-        result.innerHTML = '<p style="color:red;">❌ Une erreur est survenue.</p>';
-        console.error(e);
+        result.innerHTML = `<img src="${url}" style="max-width:300px"><br><a href="${url}" download>📥 Télécharger</a>`;
+      } else {
+        const error = await res.json();
+        result.innerHTML = `<p style="color:red;">❌ Une erreur est survenue.<br>${error.detail || ''}</p>`;
       }
-    }
+    });
   </script>
 </body>
 </html>
