@@ -1,44 +1,53 @@
-// Express server qui sert de proxy sécurisé pour Photoroom
 const express = require('express');
 const multer = require('multer');
-const fetch = require('node-fetch');
-const FormData = require('form-data');
-const cors = require('cors');
-require('dotenv').config();
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
-const upload = multer();
-const PORT = process.env.PORT || 3000;
+const upload = multer({ dest: 'uploads/' });
 
-app.use(cors());
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', "default-src *; style-src * 'unsafe-inline'; script-src * 'unsafe-inline'; img-src * data: blob:;");
+  next();
+});
 
-app.post('/api/remove-bg', upload.single('image_file'), async (req, res) => {
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Page de test GET /
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'remove-background.html'));
+});
+
+// Endpoint POST
+app.post('/api/remove-bg', upload.single('image'), async (req, res) => {
   try {
-    const formData = new FormData();
-    formData.append('image_file', req.file.buffer, req.file.originalname);
-    formData.append('output_format', 'png');
+    const imagePath = req.file.path;
+    const apiKey = process.env.PHOTOROOM_API_KEY || '23ec806c3445329c8e36d6189803194190ea53e3';
+    const image = fs.readFileSync(imagePath);
 
-    const response = await fetch('https://sdk.photoroom.com/v1/segment', {
-      method: 'POST',
+    const response = await axios({
+      method: 'post',
+      url: 'https://sdk.photoroom.com/v1/segment',
       headers: {
-        'x-api-key': process.env.PHOTOROOM_API_KEY
+        'x-api-key': apiKey,
+        'Content-Type': 'application/octet-stream',
       },
-      body: formData
+      data: image,
+      responseType: 'arraybuffer',
     });
 
-    if (!response.ok) {
-      return res.status(response.status).json({ error: 'Photoroom API failed' });
-    }
+    fs.unlinkSync(imagePath); // Nettoyer le fichier temporaire
 
-    const resultBuffer = await response.buffer();
     res.set('Content-Type', 'image/png');
-    res.send(resultBuffer);
+    res.send(response.data);
   } catch (error) {
-    console.error('Erreur proxy Photoroom:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    console.error('Erreur traitement :', error.message);
+    res.status(500).json({ error: 'Erreur lors de la suppression du fond' });
   }
 });
 
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Serveur API remove-bg en ligne sur le port ${PORT}`);
 });
