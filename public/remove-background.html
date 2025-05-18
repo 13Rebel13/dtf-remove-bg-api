@@ -2,21 +2,21 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Test Remove Background</title>
+  <title>Test de suppression d’arrière-plan</title>
 </head>
-<body style="text-align: center; padding: 40px; font-family: sans-serif;">
+<body style="text-align: center; padding: 40px; font-family: sans-serif">
   <h1>Test de suppression d’arrière-plan (PhotoRoom)</h1>
+
   <form id="uploadForm" enctype="multipart/form-data">
     <input type="file" name="image" required><br><br>
     <button type="submit">Envoyer</button>
   </form>
-  <br>
-  <div>
-    <h3>Image originale :</h3>
-    <img id="input-preview" style="max-width: 300px;" />
-    <h3>Image traitée :</h3>
-    <img id="result" style="max-width: 300px;" />
-  </div>
+
+  <h3>Image originale :</h3>
+  <img id="original" style="max-width: 300px;"><br>
+
+  <h3>Image traitée :</h3>
+  <img id="result" style="max-width: 300px;"><br>
 
   <script>
     document.getElementById('uploadForm').addEventListener('submit', async (e) => {
@@ -24,24 +24,25 @@
       const form = e.target;
       const formData = new FormData(form);
       const file = form.image.files[0];
-      document.getElementById('input-preview').src = URL.createObjectURL(file);
 
-      try {
-        const res = await fetch('/api/remove-bg', {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'x-user-email': 'ton@email.com' // 🔁 remplace par email client Outseta
-          }
-        });
+      document.getElementById('original').src = URL.createObjectURL(file);
 
-        if (!res.ok) throw new Error("Échec traitement");
+      const res = await fetch('/api/remove-bg', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'x-user-email': 'ton@email.com' // <- Remplace par un vrai email utilisateur
+        }
+      });
 
-        const blob = await res.blob();
-        document.getElementById('result').src = URL.createObjectURL(blob);
-      } catch (err) {
-        alert(err.message);
+      if (!res.ok) {
+        alert("Erreur pendant le traitement de l’image.");
+        return;
       }
+
+      const blob = await res.blob();
+      const imgURL = URL.createObjectURL(blob);
+      document.getElementById('result').src = imgURL;
     });
   </script>
 </body>
