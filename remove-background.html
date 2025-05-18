@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supprimer le fond - DTF Swiss</title>
+  <script src="https://cdn.outseta.com/outseta.min.js" data-options="{ domain: 'dtfswiss.outseta.com', load: 'auth' }"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f8;
+      padding: 20px;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 30px;
+    }
+    input[type="file"] {
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #66ffff;
+      border: 2px solid #00cccc;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #00cccc;
+      color: white;
+    }
+    #output img {
+      margin-top: 30px;
+      max-width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <h1>Suppression d'arrière-plan</h1>
+  <input type="file" id="fileInput" accept="image/*">
+  <br>
+  <button id="processBtn">Supprimer le fond</button>
+  <div id="output"></div>
+
+  <script>
+    const API_ENDPOINT = 'https://dtf-remove-bg-api.onrender.com/api/remove-bg';
+
+    document.getElementById('processBtn').addEventListener('click', async () => {
+      const file = document.getElementById('fileInput').files[0];
+      if (!file) return alert("Merci de sélectionner une image.");
+
+      const formData = new FormData();
+      formData.append("image_file", file);
+
+      try {
+        const response = await fetch(API_ENDPOINT, {
+          method: "POST",
+          body: formData
+        });
+
+        if (!response.ok) throw new Error("Échec du traitement de l'image.");
+        const blob = await response.blob();
+        const imageURL = URL.createObjectURL(blob);
+
+        document.getElementById("output").innerHTML = `<img src="${imageURL}" alt="Résultat">`;
+
+        // décrémentation des crédits si succès
+        Outseta.getCurrentUser().then(user => {
+          const credits = user?.person?.Crédits ?? 0;
+          if (credits > 0) {
+            const updated = { Crédits: credits - 1 };
+            Outseta.updatePerson(user.person.Uid, updated)
+              .then(() => console.log("Crédit décrémenté."))
+              .catch(err => console.error("Erreur décrémentation :", err));
+          }
+        });
+
+      } catch (err) {
+        console.error(err);
+        alert("Une erreur s'est produite. Merci de réessayer.");
+      }
+    });
+  </script>
+</body>
+</html>
