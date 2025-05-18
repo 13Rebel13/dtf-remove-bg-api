@@ -3,48 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <title>Test Remove Background</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 40px;
+    }
+    img {
+      max-width: 300px;
+      margin: 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px #ccc;
+    }
+  </style>
 </head>
-<body style="font-family: sans-serif; text-align: center; padding: 40px;">
-
+<body>
   <h1>Test de suppression d’arrière-plan (PhotoRoom)</h1>
-
   <form id="uploadForm" enctype="multipart/form-data">
-    <input type="file" name="image" id="inputFile" required><br><br>
+    <input type="file" name="image" id="imageInput" accept="image/*" required><br><br>
     <button type="submit">Envoyer</button>
   </form>
 
-  <div style="margin-top: 40px;">
+  <div id="preview">
     <h3>Image originale :</h3>
-    <img id="originalImage" style="max-width: 300px;"><br><br>
+    <img id="originalImage" src="#" alt="Image d’origine" style="display:none;">
+  </div>
 
+  <div id="result">
     <h3>Image traitée :</h3>
-    <img id="resultImage" style="max-width: 300px;">
+    <img id="resultImage" src="#" alt="Image traitée" style="display:none;">
   </div>
 
   <script>
-    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+    const form = document.getElementById('uploadForm');
+    const originalImage = document.getElementById('originalImage');
+    const resultImage = document.getElementById('resultImage');
+    const imageInput = document.getElementById('imageInput');
+
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const input = document.getElementById('inputFile');
-      const file = input.files[0];
+      const file = imageInput.files[0];
+      if (!file) return;
 
-      // Affiche l'image d'origine
-      const originalURL = URL.createObjectURL(file);
-      document.getElementById('originalImage').src = originalURL;
+      // Afficher l’image originale
+      originalImage.src = URL.createObjectURL(file);
+      originalImage.style.display = 'block';
 
       const formData = new FormData();
       formData.append('image', file);
 
-      const res = await fetch('/api/remove-bg', {
-        method: 'POST',
-        body: formData
-      });
+      try {
+        const res = await fetch('/api/remove-bg', {
+          method: 'POST',
+          body: formData
+        });
 
-      const blob = await res.blob();
-      const processedURL = URL.createObjectURL(blob);
-      document.getElementById('resultImage').src = processedURL;
+        if (!res.ok) throw new Error('Échec traitement');
+
+        const blob = await res.blob();
+        const imgURL = URL.createObjectURL(blob);
+
+        resultImage.src = imgURL;
+        resultImage.style.display = 'block';
+
+      } catch (err) {
+        alert("Erreur pendant le traitement de l'image.");
+        console.error(err);
+      }
     });
   </script>
-
 </body>
 </html>
