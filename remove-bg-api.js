@@ -31,7 +31,7 @@ app.get('/', (req, res) => {
 app.post('/api/remove-bg', upload.single('image'), async (req, res) => {
   try {
     const imagePath = req.file.path;
-    const apiKey = process.env.PHOTOROOM_API_KEY || '23ec806c3445329c8e36d6189803194190ea53e3';
+    const apiKey = process.env.PHOTOROOM_API_KEY;
     const image = fs.readFileSync(imagePath);
 
     const response = await axios({
