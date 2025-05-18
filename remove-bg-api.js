@@ -1,5 +1,6 @@
 // === 1. FICHIER : remove-bg-api.js ===
 // À mettre à la racine de ton dépôt GitHub (dtf-remove-bg-api)
+require('dotenv').config();
 
 const express = require('express');
 const multer = require('multer');
