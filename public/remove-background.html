@@ -5,19 +5,35 @@
   <title>Test Remove Background</title>
 </head>
 <body style="font-family: sans-serif; text-align: center; padding: 40px;">
+
   <h1>Test de suppression d’arrière-plan (PhotoRoom)</h1>
+
   <form id="uploadForm" enctype="multipart/form-data">
-    <input type="file" name="image" required><br><br>
+    <input type="file" name="image" id="inputFile" required><br><br>
     <button type="submit">Envoyer</button>
   </form>
-  <br>
-  <div id="result"></div>
+
+  <div style="margin-top: 40px;">
+    <h3>Image originale :</h3>
+    <img id="originalImage" style="max-width: 300px;"><br><br>
+
+    <h3>Image traitée :</h3>
+    <img id="resultImage" style="max-width: 300px;">
+  </div>
 
   <script>
     document.getElementById('uploadForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const form = e.target;
-      const formData = new FormData(form);
+
+      const input = document.getElementById('inputFile');
+      const file = input.files[0];
+
+      // Affiche l'image d'origine
+      const originalURL = URL.createObjectURL(file);
+      document.getElementById('originalImage').src = originalURL;
+
+      const formData = new FormData();
+      formData.append('image', file);
 
       const res = await fetch('/api/remove-bg', {
         method: 'POST',
@@ -25,9 +41,10 @@
       });
 
       const blob = await res.blob();
-      const imgURL = URL.createObjectURL(blob);
-      document.getElementById('result').innerHTML = `<h3>Image traitée :</h3><img src=\"${imgURL}\" style=\"max-width: 400px;\">`;
+      const processedURL = URL.createObjectURL(blob);
+      document.getElementById('resultImage').src = processedURL;
     });
   </script>
+
 </body>
 </html>
