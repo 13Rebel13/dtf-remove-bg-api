@@ -2,48 +2,46 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Test de suppression d’arrière-plan</title>
+  <title>Test Remove Background</title>
 </head>
-<body style="text-align: center; padding: 40px; font-family: sans-serif">
-  <h1>Test de suppression d’arrière-plan (PhotoRoom)</h1>
-
-  <form id="uploadForm" enctype="multipart/form-data">
-    <input type="file" name="image" required><br><br>
-    <button type="submit">Envoyer</button>
-  </form>
-
-  <h3>Image originale :</h3>
-  <img id="original" style="max-width: 300px;"><br>
-
-  <h3>Image traitée :</h3>
-  <img id="result" style="max-width: 300px;"><br>
+<body style="font-family: sans-serif; text-align: center; padding: 40px;">
+  <h1>Test suppression arrière-plan (Render)</h1>
+  <input type="file" id="imageInput" accept="image/*">
+  <br><br>
+  <button onclick="removeBackground()">Supprimer le fond</button>
+  <div id="result" style="margin-top: 30px;"></div>
 
   <script>
-    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const form = e.target;
-      const formData = new FormData(form);
-      const file = form.image.files[0];
-
-      document.getElementById('original').src = URL.createObjectURL(file);
-
-      const res = await fetch('/api/remove-bg', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'x-user-email': 'ton@email.com' // <- Remplace par un vrai email utilisateur
-        }
-      });
-
-      if (!res.ok) {
-        alert("Erreur pendant le traitement de l’image.");
+    async function removeBackground() {
+      const fileInput = document.getElementById('imageInput');
+      const file = fileInput.files[0];
+      if (!file) {
+        alert('Sélectionne une image');
         return;
       }
 
-      const blob = await res.blob();
-      const imgURL = URL.createObjectURL(blob);
-      document.getElementById('result').src = imgURL;
-    });
+      const formData = new FormData();
+      formData.append('image_file', file);
+
+      const result = document.getElementById('result');
+      result.innerHTML = "⏳ Traitement en cours...";
+
+      try {
+        const res = await fetch('/api/remove-bg', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!res.ok) throw new Error('Échec traitement');
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        result.innerHTML = `<img src="${url}" alt="Résultat" style="max-width: 400px;">`;
+      } catch (err) {
+        result.innerHTML = "❌ Une erreur est survenue.";
+        console.error(err);
+      }
+    }
   </script>
 </body>
 </html>
